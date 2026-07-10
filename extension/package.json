@@ -1,0 +1,135 @@
+{
+  "name": "jira-agent",
+  "displayName": "Jira Agent",
+  "description": "Manage a local Jira-driven coding agent: workflows, running/blocked tickets, labels, live log.",
+  "version": "0.3.0",
+  "publisher": "your-publisher-id",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OWNER/jira-agent-generic.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OWNER/jira-agent-generic/issues"
+  },
+  "keywords": [
+    "jira",
+    "agent",
+    "automation",
+    "coding-agent",
+    "claude"
+  ],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other",
+    "SCM Providers"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "jiraAgent",
+          "title": "Jira Agent",
+          "icon": "media/robot.svg"
+        }
+      ]
+    },
+    "views": {
+      "jiraAgent": [
+        {
+          "id": "jiraAgentWorkflows",
+          "name": "Workflows"
+        },
+        {
+          "id": "jiraAgentTickets",
+          "name": "Tickets"
+        },
+        {
+          "id": "jiraAgentLog",
+          "name": "Live Log"
+        }
+      ]
+    },
+    "commands": [
+      { "command": "jiraAgent.refresh", "title": "Jira Agent: Refresh", "icon": "$(refresh)" },
+      { "command": "jiraAgent.runPollerNow", "title": "Jira Agent: Run Poller Now", "icon": "$(play)" },
+      { "command": "jiraAgent.openConfig", "title": "Jira Agent: Open defaults (config.json)", "icon": "$(gear)" },
+      { "command": "jiraAgent.createWorkflow", "title": "Jira Agent: Create workflow", "icon": "$(add)" },
+      { "command": "jiraAgent.toggleWorkflowAutoRun", "title": "Jira Agent: Toggle auto-run", "icon": "$(play-circle)" },
+      { "command": "jiraAgent.startWorkflow", "title": "Jira Agent: Start workflow", "icon": "$(play)" },
+      { "command": "jiraAgent.stopWorkflow", "title": "Jira Agent: Stop workflow", "icon": "$(debug-stop)" },
+      { "command": "jiraAgent.editWorkflow", "title": "Jira Agent: Edit workflow (form)", "icon": "$(edit)" },
+      { "command": "jiraAgent.setWorkflowInterval", "title": "Jira Agent: Set workflow interval", "icon": "$(clock)" },
+      { "command": "jiraAgent.openWorkflowFile", "title": "Jira Agent: Open workflow file", "icon": "$(go-to-file)" },
+      { "command": "jiraAgent.deleteWorkflow", "title": "Jira Agent: Delete workflow", "icon": "$(trash)" },
+      { "command": "jiraAgent.rerunTicket", "title": "Jira Agent: Re-run ticket (clear state)", "icon": "$(debug-restart)" },
+      { "command": "jiraAgent.openTicketLog", "title": "Jira Agent: Open ticket log", "icon": "$(output)" },
+      { "command": "jiraAgent.openTicketInJira", "title": "Jira Agent: Open ticket in Jira", "icon": "$(link-external)" },
+      { "command": "jiraAgent.openLogFile", "title": "Jira Agent: Open newest log", "icon": "$(go-to-file)" },
+      { "command": "jiraAgent.openLogsFolder", "title": "Jira Agent: Open logs folder", "icon": "$(folder)" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "jiraAgent.createWorkflow", "when": "view == jiraAgentWorkflows", "group": "navigation@1" },
+        { "command": "jiraAgent.runPollerNow", "when": "view == jiraAgentWorkflows", "group": "navigation@2" },
+        { "command": "jiraAgent.openConfig", "when": "view == jiraAgentWorkflows", "group": "navigation@3" },
+        { "command": "jiraAgent.refresh", "when": "view == jiraAgentWorkflows", "group": "navigation@4" },
+        { "command": "jiraAgent.refresh", "when": "view == jiraAgentTickets", "group": "navigation@1" },
+        { "command": "jiraAgent.runPollerNow", "when": "view == jiraAgentLog", "group": "navigation@1" },
+        { "command": "jiraAgent.openLogsFolder", "when": "view == jiraAgentLog", "group": "navigation@2" },
+        { "command": "jiraAgent.openLogFile", "when": "view == jiraAgentLog", "group": "navigation@3" },
+        { "command": "jiraAgent.refresh", "when": "view == jiraAgentLog", "group": "navigation@4" }
+      ],
+      "view/item/context": [
+        { "command": "jiraAgent.startWorkflow", "when": "view == jiraAgentWorkflows && viewItem == workflow-idle", "group": "inline@1" },
+        { "command": "jiraAgent.stopWorkflow", "when": "view == jiraAgentWorkflows && viewItem == workflow-running", "group": "inline@1" },
+        { "command": "jiraAgent.editWorkflow", "when": "view == jiraAgentWorkflows && viewItem =~ /^workflow-/", "group": "inline@2" },
+        { "command": "jiraAgent.setWorkflowInterval", "when": "view == jiraAgentWorkflows && viewItem =~ /^workflow-/", "group": "context@1" },
+        { "command": "jiraAgent.startWorkflow", "when": "view == jiraAgentWorkflows && viewItem == workflow-idle", "group": "context@2" },
+        { "command": "jiraAgent.stopWorkflow", "when": "view == jiraAgentWorkflows && viewItem == workflow-running", "group": "context@2" },
+        { "command": "jiraAgent.openWorkflowFile", "when": "view == jiraAgentWorkflows && viewItem =~ /^workflow-/", "group": "context@3" },
+        { "command": "jiraAgent.deleteWorkflow", "when": "view == jiraAgentWorkflows && viewItem =~ /^workflow-/", "group": "context@4" },
+        { "command": "jiraAgent.rerunTicket", "when": "view == jiraAgentTickets && viewItem == ticket", "group": "inline@1" },
+        { "command": "jiraAgent.openTicketLog", "when": "view == jiraAgentTickets && viewItem == ticket", "group": "inline@2" },
+        { "command": "jiraAgent.openTicketInJira", "when": "view == jiraAgentTickets && viewItem == ticket", "group": "inline@3" }
+      ]
+    },
+    "configuration": {
+      "title": "Jira Agent",
+      "properties": {
+        "jiraAgent.homeDir": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the .jira-agent home. Empty = %USERPROFILE%/.jira-agent."
+        },
+        "jiraAgent.pollerScriptPath": {
+          "type": "string",
+          "default": "",
+          "description": "Full path to poller-run.ps1. Empty = auto-detect (user-scope skills, then the open workspace)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "copy-skills": "node ./scripts/copy-skills.js",
+    "vscode:prepublish": "npm run compile && npm run copy-skills",
+    "package": "vsce package",
+    "publish:vsce": "vsce publish",
+    "publish:ovsx": "ovsx publish"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.4.5",
+    "@vscode/vsce": "^2.24.0",
+    "ovsx": "^0.9.0"
+  }
+}

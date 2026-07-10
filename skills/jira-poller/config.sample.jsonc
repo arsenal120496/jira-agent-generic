@@ -1,0 +1,78 @@
+// ---------------------------------------------------------------------------
+// jira-poller - annotated config REFERENCE
+//
+// This .jsonc file is documentation only. The LIVE config the poller reads is
+//   %USERPROFILE%\.jira-agent\config.json
+// and it must be PLAIN JSON (no comments) - Windows PowerShell 5.1
+// ConvertFrom-Json rejects // comments. Copy values across by hand; do NOT
+// rename this file to config.json.
+//
+// A ticket is picked up when ALL of these hold:
+//   1. assignee = currentUser()            (your own Jira account + token)
+//   2. it carries "agentLabel"             (you add it to hand the ticket over)
+//   3. it is not locked/done               (no lockLabel / doneLabel)
+//   4. statusCategory != Done
+//   5. it matches a rule below             (first matching rule wins)
+// ---------------------------------------------------------------------------
+{
+  // Master kill switch. When false the poller exits immediately (before any
+  // Jira call). Toggle with: poller-config.ps1 -Enable | -Disable
+  "enabled": true,
+
+  // Observe-only mode. true = list what WOULD be dispatched, touch nothing
+  // (no Jira writes, no handler run). Defaults true so the first runs are safe.
+  // Set false only when you are ready to let it act: poller-config.ps1 -SetDryRun off
+  "dryRun": true,
+
+  // How often the scheduled task runs, in minutes (1-1439). After changing,
+  // re-register the task: setup-option1.cmd -AgentRegister
+  "pollIntervalMinutes": 10,
+
+  // Your Jira site. Auth uses JIRA_API_TOKEN (User env var) + your email.
+  "jiraBaseUrl": "https://your-org.atlassian.net",
+
+  // The label a developer adds to a self-assigned ticket to hand it to the agent.
+  "agentLabel": "claude-fix",
+
+  // Managed BY the poller, not by you:
+  //   lockLabel - added while a handler is running (prevents double-dispatch)
+  //   doneLabel - added after a handler completes (excludes it from future scans)
+  "lockLabel": "claude-in-progress",
+  "doneLabel": "claude-done",
+
+  // Safety cap: at most this many tickets are dispatched per run.
+  "maxTicketsPerRun": 2,
+
+  // Extra args appended to every `claude -p "/<handler> ..."` launch.
+  // Leave empty unless you need e.g. a specific model/flag. Example: ["--model","sonnet"]
+  "claudeArgs": [],
+
+  // Routing rules. Each ticket is tested against these top-to-bottom; the FIRST
+  // rule whose "labels" are ALL present AND whose "issueTypes" is empty-or-matching
+  // wins, and the ticket is dispatched to that rule's handler in that rule's repo.
+  "rules": [
+    {
+      // Human-readable name (shown in logs / scan output only).
+      "name": "default",
+
+      // Rule matches only if the ticket has ALL of these labels (in addition to
+      // agentLabel). Use [] to match on issue type / everything.
+      "labels": [],
+
+      // Restrict to these Jira issue types. [] = any type. Example: ["Bug","Task"]
+      "issueTypes": [],
+
+      // The skill that fixes the ticket. Invoked headless as:
+      //   claude -p "/<handler> <ISSUE-KEY> <instructions>"
+      "handler": "implement-task",
+
+      // REQUIRED. Absolute path to the local repo the handler runs inside.
+      // Windows paths must escape backslashes in JSON, e.g. "d:\\work\\my-repo".
+      // An empty or missing repo makes dispatch FAIL for this rule.
+      "repo": "",
+
+      // Free-text guidance appended to the handler prompt.
+      "instructions": ""
+    }
+  ]
+}

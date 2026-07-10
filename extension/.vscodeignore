@@ -1,0 +1,13 @@
+.vscode/**
+src/**
+**/*.ts
+**/*.map
+tsconfig.json
+.gitignore
+node_modules/**
+packaging/**
+scripts/**
+media/icon.svg
+dist/**
+*.vsix
+*.zip
