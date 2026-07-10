@@ -47,6 +47,26 @@ supported.
 4. Click Start on the workflow. This registers the background poller (a per-user Scheduled Task,
    no admin rights needed) and kicks one run immediately; after that it polls on its interval.
 
+## Configuring a Sample Workflow
+To get started quickly, you can set up a sample workflow in the extension side panel:
+1. **Open the Jira Agent** sidebar panel in your editor.
+2. Click **"Create workflow"** (or the **+** button).
+3. Fill out the workflow form with these sample settings:
+   - **Name**: `My Dev Workflow`
+   - **Repo**: The absolute path to your local git repository (e.g., `C:\Users\Username\Projects\my-web-app`).
+   - **Query labels**: `claude-fix`
+   - **Jira base URL**: `https://your-organization.atlassian.net`
+   - **Project key**: `XYZ` (replace with your actual Jira Project Key)
+   - **Auto run after add**: `ON`
+   - Keep the other advanced settings as default (e.g., Handler: `implement-task`).
+4. Click **Save**.
+
+### How to trigger the agent:
+1. Go to Jira, assign a ticket from the `XYZ` project to yourself.
+2. Add the label `claude-fix` to that ticket.
+3. Click the **Run Poller Now** (play icon) in the Workflows header of the extension side panel to trigger an immediate scan.
+4. The background poller will detect the ticket, launch the handler in your local repo to fix the issue, and open a GitHub PR!
+
 ## How it runs
 Start registers a single Scheduled Task (`Jira-Agent-Poller`) that ticks every minute and runs the
 poller. The poller gates each workflow by its own interval, so one task serves all workflows. Stop

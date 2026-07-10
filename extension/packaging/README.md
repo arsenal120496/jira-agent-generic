@@ -37,9 +37,29 @@ Set up separately before using the agent:
 ## After install
 1. Reload the IDE window (Command Palette -> `Reload Window`).
 2. Open the Jira Agent side panel -> create a workflow: set the repo path, your Jira base URL,
-   project key, agent label(s), and rules.
+   project key, agent label(s), and rules (see below for a sample setup).
 3. The extension finds the poller at `%USERPROFILE%\.claude\skills\jira-poller\scripts\poller-run.ps1`
    automatically. To override, set `jiraAgent.pollerScriptPath` in Settings.
+
+## Configuring a Sample Workflow
+To get started quickly, you can set up a sample workflow in the extension side panel:
+1. **Open the Jira Agent** sidebar panel in your editor.
+2. Click **"Create workflow"** (or the **+** button).
+3. Fill out the workflow form with these sample settings:
+   - **Name**: `My Dev Workflow`
+   - **Repo**: The absolute path to your local git repository (e.g., `C:\Users\Username\Projects\my-web-app`).
+   - **Query labels**: `claude-fix`
+   - **Jira base URL**: `https://your-organization.atlassian.net`
+   - **Project key**: `XYZ` (replace with your actual Jira Project Key)
+   - **Auto run after add**: `ON`
+   - Keep the other advanced settings as default (e.g., Handler: `implement-task`).
+4. Click **Save**.
+
+### How to trigger the agent:
+1. Go to Jira, assign a ticket from the `XYZ` project to yourself.
+2. Add the label `claude-fix` to that ticket.
+3. Click the **Run Poller Now** (play icon) in the Workflows header of the extension side panel to trigger an immediate scan.
+4. The background poller will detect the ticket, launch the handler in your local repo to fix the issue, and open a GitHub PR!
 
 ## Update
 Re-run `install.cmd` from a newer bundle - it overwrites the skills and force-installs the newer VSIX.
