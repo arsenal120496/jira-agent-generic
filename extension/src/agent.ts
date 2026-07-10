@@ -238,31 +238,47 @@ export type PollerTaskState = { registered: boolean; enabled: boolean; lastRun?:
 export function pollerTaskState(): PollerTaskState {
     if (_taskCache && (Date.now() - _taskCache.at) < 4000) { return _taskCache.state; }
     let state: PollerTaskState = { registered: false, enabled: false };
-    try {
-        const out = execFileSync('schtasks', ['/Query', '/TN', POLLER_TASK_NAME, '/FO', 'LIST', '/V'],
-            { encoding: 'utf8', windowsHide: true, timeout: 4000 });
-        const field = (label: string) => {
-            const line = out.split(/\r?\n/).find(l => l.trim().toLowerCase().startsWith(label.toLowerCase()));
-            return line ? line.slice(line.indexOf(':') + 1).trim() : '';
-        };
-        // "Scheduled Task State" is Enabled/Disabled; "Status" is Ready/Running/Disabled.
-        const taskState = field('Scheduled Task State') || field('Status');
-        state = {
-            registered: true,
-            enabled: !/disabled/i.test(taskState),
-            lastRun: field('Last Run Time'),
-            nextRun: field('Next Run Time')
-        };
-    } catch { /* task not registered (schtasks exits non-zero) -> registered:false */ }
+    if (os.platform() === 'win32') {
+        try {
+            const out = execFileSync('schtasks', ['/Query', '/TN', POLLER_TASK_NAME, '/FO', 'LIST', '/V'],
+                { encoding: 'utf8', windowsHide: true, timeout: 4000 });
+            const field = (label: string) => {
+                const line = out.split(/\r?\n/).find(l => l.trim().toLowerCase().startsWith(label.toLowerCase()));
+                return line ? line.slice(line.indexOf(':') + 1).trim() : '';
+            };
+            // "Scheduled Task State" is Enabled/Disabled; "Status" is Ready/Running/Disabled.
+            const taskState = field('Scheduled Task State') || field('Status');
+            state = {
+                registered: true,
+                enabled: !/disabled/i.test(taskState),
+                lastRun: field('Last Run Time'),
+                nextRun: field('Next Run Time')
+            };
+        } catch { /* task not registered (schtasks exits non-zero) -> registered:false */ }
+    } else {
+        try {
+            const out = execFileSync('crontab', ['-l'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+            const script = pollerRunScript();
+            if (script && out.includes(script)) {
+                const lines = out.split('\n');
+                const active = lines.some(l => l.trim() && !l.trim().startsWith('#') && l.includes(script));
+                state = {
+                    registered: true,
+                    enabled: active,
+                    lastRun: undefined,
+                    nextRun: 'Every minute (cron)'
+                };
+            }
+        } catch { /* crontab empty or command failed */ }
+    }
     _taskCache = { at: Date.now(), state };
     return state;
 }
 
-// Register (idempotently) the headless background poller as a Windows scheduled task that ticks every
+// Register (idempotently) the headless background poller as a scheduled task (Windows Task Scheduler or Unix cron) that ticks every
 // minute and runs poller-run.ps1. poller-run gates each workflow by its own pollIntervalMinutes, so
 // one task serves ALL workflows - this is a one-time global setup, not per-workflow. Called from
-// Start so the user never has to register the task by hand. `/Create /F` overwrites, so calling it
-// repeatedly is safe. No elevation needed (per-user task, runs while logged in).
+// Start so the user never has to register the task by hand. No elevation needed.
 export function ensurePollerTask(): { ok: boolean; message: string } {
     const existing = pollerTaskState();
     if (existing.registered && existing.enabled) { return { ok: true, message: 'already registered' }; }
@@ -270,14 +286,35 @@ export function ensurePollerTask(): { ok: boolean; message: string } {
     if (!script || !exists(script)) {
         return { ok: false, message: 'poller-run.ps1 not found. Open the repo as a workspace folder, or set "jiraAgent.pollerScriptPath" in Settings.' };
     }
-    const tr = `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${script}"`;
-    try {
-        execFileSync('schtasks', ['/Create', '/TN', POLLER_TASK_NAME, '/TR', tr, '/SC', 'MINUTE', '/MO', '1', '/F'],
-            { windowsHide: true, timeout: 8000 });
-        _taskCache = undefined; // invalidate so the next status read reflects the new task
-        return { ok: true, message: 'headless poller registered (ticks every minute)' };
-    } catch (e: any) {
-        return { ok: false, message: `schtasks create failed: ${String(e?.message || e)}` };
+    if (os.platform() === 'win32') {
+        const tr = `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${script}"`;
+        try {
+            execFileSync('schtasks', ['/Create', '/TN', POLLER_TASK_NAME, '/TR', tr, '/SC', 'MINUTE', '/MO', '1', '/F'],
+                { windowsHide: true, timeout: 8000 });
+            _taskCache = undefined; // invalidate so the next status read reflects the new task
+            return { ok: true, message: 'headless poller registered (ticks every minute)' };
+        } catch (e: any) {
+            return { ok: false, message: `schtasks create failed: ${String(e?.message || e)}` };
+        }
+    } else {
+        try {
+            let currentCron = '';
+            try {
+                currentCron = execFileSync('crontab', ['-l'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+            } catch { /* ignored if no crontab */ }
+            const cronLine = `* * * * * pwsh -NoProfile -File "${script}"`;
+            if (currentCron.includes(script)) {
+                return { ok: true, message: 'already registered in crontab' };
+            }
+            const lines = currentCron.split('\n').filter(l => l.trim() && !l.includes('poller-run.ps1'));
+            lines.push(cronLine);
+            const newCron = lines.join('\n') + '\n';
+            execFileSync('crontab', [], { input: newCron, encoding: 'utf8', timeout: 5000 });
+            _taskCache = undefined;
+            return { ok: true, message: 'headless poller registered in crontab (ticks every minute)' };
+        } catch (e: any) {
+            return { ok: false, message: `crontab registration failed: ${String(e?.message || e)}` };
+        }
     }
 }
 
@@ -346,9 +383,14 @@ export function runWorkflowNow(wfId: string): ChildProcess | undefined {
     const out = output();
     out.show(true);
     out.appendLine(`\n=== ${new Date().toISOString()} start workflow ${wfId} ===`);
+    const isWin = os.platform() === 'win32';
+    const psCmd = isWin ? 'powershell.exe' : 'pwsh';
+    const args = isWin
+        ? ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-Force', '-WorkflowId', wfId]
+        : ['-NoProfile', '-File', script, '-Force', '-WorkflowId', wfId];
     const child = spawn(
-        'powershell.exe',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-Force', '-WorkflowId', wfId],
+        psCmd,
+        args,
         { windowsHide: true, detached: false }
     );
     child.stdout?.on('data', d => out.append(String(d)));
@@ -357,9 +399,15 @@ export function runWorkflowNow(wfId: string): ChildProcess | undefined {
     child.on('error', e => out.appendLine(`workflow ${wfId} error: ${e?.message ?? e}`));
     return child;
 }
-// Kill a process tree (the poller shell + its claude child) on Windows.
+// Kill a process tree (the poller shell + its claude child).
 export function killTree(pid: number): void {
-    try { execFile('taskkill', ['/PID', String(pid), '/T', '/F'], () => { /* best effort */ }); } catch { /* ignore */ }
+    if (os.platform() === 'win32') {
+        try { execFile('taskkill', ['/PID', String(pid), '/T', '/F'], () => { /* best effort */ }); } catch { /* ignore */ }
+    } else {
+        try { process.kill(pid, 'SIGKILL'); } catch {
+            try { execFile('kill', ['-9', String(pid)], () => { /* best effort */ }); } catch { /* ignore */ }
+        }
+    }
 }
 // Reset the workflow's runtime running flag (used after a manual stop).
 export function clearWorkflowRunning(wfId: string): void {
@@ -402,9 +450,14 @@ export function runPollerNow(): ChildProcess | undefined {
     const out = output();
     out.show(true);
     out.appendLine(`\n=== ${new Date().toISOString()} run poller (all workflows) ===`);
+    const isWin = os.platform() === 'win32';
+    const psCmd = isWin ? 'powershell.exe' : 'pwsh';
+    const args = isWin
+        ? ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-Force']
+        : ['-NoProfile', '-File', script, '-Force'];
     const child = spawn(
-        'powershell.exe',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-Force'],
+        psCmd,
+        args,
         { windowsHide: true, detached: false }
     );
     child.stdout?.on('data', d => out.append(String(d)));

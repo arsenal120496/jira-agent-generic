@@ -10,8 +10,8 @@
 
 ## Overview
 The extension is published as a single VSIX. On install it copies its bundled skills
-(`jira-poller`, `implement-task`) into `%USERPROFILE%\.claude\skills`, so no separate installer is
-needed. It is Windows-only for now (Scheduled Task + PowerShell).
+(`jira-poller`, `implement-task`) into the user's home skills folder (e.g. `%USERPROFILE%\.claude\skills` on Windows, or `~/.claude/skills` on Linux/macOS), so no separate installer is
+needed. It supports Windows, Linux, and macOS.
 
 Two independent registries:
 - VS Code Marketplace (`marketplace.visualstudio.com`) - for VS Code and Cursor. Tool: `vsce`.

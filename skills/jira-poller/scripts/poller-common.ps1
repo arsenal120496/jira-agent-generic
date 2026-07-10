@@ -17,7 +17,8 @@ $ErrorActionPreference = 'Stop'
 # Agent home: %USERPROFILE%\.jira-agent
 # ---------------------------------------------------------------------------
 function Get-AgentDir {
-    $d = Join-Path $env:USERPROFILE '.jira-agent'
+    $home = if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }
+    $d = Join-Path $home '.jira-agent'
     if (-not (Test-Path -LiteralPath $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
     return $d
 }

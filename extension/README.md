@@ -34,9 +34,10 @@ Set these up before using the agent:
 - Node.js only if a target repo's build/test needs it.
 
 ## Platform support
-Windows only for now. The headless poller is registered as a Windows Scheduled Task and the
-extension shells out to `powershell.exe`, `schtasks`, and `taskkill`. macOS/Linux are not yet
-supported.
+Windows, Linux, and macOS are supported.
+- **Windows**: The headless poller is registered as a Windows Scheduled Task, running via `powershell.exe`.
+- **Linux / macOS**: The headless poller is registered as a user `cron` job, running via PowerShell Core (`pwsh`).
+
 
 ## Quick start
 1. Install the extension and reload the window.

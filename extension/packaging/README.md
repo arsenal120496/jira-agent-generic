@@ -22,6 +22,7 @@ Set up separately before using the agent:
 - `git` and the GitHub CLI `gh` (run `gh auth login` so pushes and PRs work).
 - The Claude Code CLI `claude` on PATH.
 - Node.js (only if a target repo's build/test needs it).
+- PowerShell Core (`pwsh`) on PATH (required for Linux/macOS).
 - Jira Cloud API access as environment variables:
   - `JIRA_USER`      = your Jira account email
   - `JIRA_API_TOKEN` = a Jira API token (id.atlassian.com -> Security -> API tokens)

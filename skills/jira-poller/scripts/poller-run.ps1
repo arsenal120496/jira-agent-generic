@@ -87,14 +87,16 @@ foreach ($f in $files) {
             foreach ($t in $todo) {
                 Set-WfMeta $id @{ running = 'working'; activeTicket = $t.key }
                 Log ("dispatch {0} -> {1} (repo {2})" -f $t.key, $t.handler, $t.repo)
-                # Only pass -Instructions when non-empty: an empty-string element is DROPPED when
-                # splatting to a native exe, which shifts args and breaks dispatch's param binding.
-                $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ("$PSScriptRoot\poller-dispatch.ps1"),
+                $isWin = $IsWindows -or ($env:OS -eq 'Windows_NT')
+                $psExe = if ($isWin) { 'powershell.exe' } else { 'pwsh' }
+                $a = @()
+                if ($isWin) { $a += @('-NoProfile', '-ExecutionPolicy', 'Bypass') } else { $a += @('-NoProfile') }
+                $a += @('-File', ("$PSScriptRoot\poller-dispatch.ps1"),
                     '-WorkflowFile', $f.FullName, '-Key', [string]$t.key, '-Handler', [string]$t.handler, '-Repo', [string]$t.repo)
                 if ($t.instructions -and [string]$t.instructions -ne '') { $a += @('-Instructions', [string]$t.instructions) }
                 if ($t.revisit) { $a += '-Revisit' }
                 $oldEap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-                $dout = & powershell.exe @a *>&1 | Out-String
+                $dout = & $psExe @a *>&1 | Out-String
                 $code = $LASTEXITCODE
                 $ErrorActionPreference = $oldEap
                 # Surface the dispatch's own status/reason into the log (not just the exit code).
