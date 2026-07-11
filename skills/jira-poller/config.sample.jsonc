@@ -2,7 +2,7 @@
 // jira-poller - annotated config REFERENCE
 //
 // This .jsonc file is documentation only. The LIVE config the poller reads is
-//   %USERPROFILE%\.jira-agent\config.json
+//   ~/.jira-agent/config.json (on Windows: %USERPROFILE%\.jira-agent\config.json)
 // and it must be PLAIN JSON (no comments) - Windows PowerShell 5.1
 // ConvertFrom-Json rejects // comments. Copy values across by hand; do NOT
 // rename this file to config.json.

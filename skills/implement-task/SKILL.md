@@ -64,7 +64,7 @@ credentials - always read them from the environment / the value the poller passe
 <process>
 
 <step name="init">
-Extract `<ticket_key>` from `$ARGUMENTS`. Set `<output_dir>` = `%USERPROFILE%\.jira-agent\tickets\<ticket_key>\`
+Extract `<ticket_key>` from `$ARGUMENTS`. Set `<output_dir>` = `~/.jira-agent/tickets/<ticket_key>/` (on Windows: `%USERPROFILE%\.jira-agent\tickets\<ticket_key>\`)
 (create if missing) for any working notes (plan.md, build-report.md, test-report.md).
 
 **Fully autonomous - no human-in-the-loop mid-run.** In Option 1 the developer reviews the result

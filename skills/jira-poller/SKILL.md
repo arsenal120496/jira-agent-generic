@@ -20,7 +20,7 @@ Drive the local Option 1 agent loop for the CURRENT developer:
 4. Report each outcome back to Jira (comment + label swap) and to local state.
 
 There is NO shared "Claude Dev" account: every developer polls their own assigned tickets
-under their own Jira token. Config lives at `%USERPROFILE%\.jira-agent\config.json` and is the
+under their own Jira token. Config lives at `~/.jira-agent/config.json` (on Windows: `%USERPROFILE%\.jira-agent\config.json`) and is the
 single source of truth (poller, scheduler, and any future UI all read/write it).
 
 Input: `$ARGUMENTS`. Output: a table of tickets + what was (or would be) dispatched.
@@ -70,7 +70,7 @@ If `--dispatch` is absent, this is a read-only scan: tell the user to re-run wit
 
 <step name="summarize">
 Print: how many tickets matched, how many dispatched, ok/failed counts, and where logs
-live (`%USERPROFILE%\.jira-agent\logs\`). Remind that unattended runs come from the scheduled
+live (`~/.jira-agent/logs/` or `%USERPROFILE%\.jira-agent\logs\` on Windows). Remind that unattended runs come from the scheduled
 task (`setup-option1.cmd -AgentRegister`), and the interval is `pollIntervalMinutes` in the
 config.
 </step>
@@ -82,7 +82,7 @@ An annotated reference of every field lives in `config.sample.jsonc` next to thi
 SKILL.md (documentation only - the live config must be plain JSON, no comments,
 because Windows PowerShell 5.1 ConvertFrom-Json rejects `//`).
 
-Config keys (`%USERPROFILE%\.jira-agent\config.json`):
+Config keys (`~/.jira-agent/config.json` or `%USERPROFILE%\.jira-agent\config.json` on Windows):
 - `enabled` (bool)          - master kill switch; poller exits immediately when false.
 - `dryRun` (bool)           - list what would run, change nothing. Defaults true on first use.
 - `pollIntervalMinutes`     - scheduled interval (re-register the task after changing).
@@ -93,6 +93,6 @@ Config keys (`%USERPROFILE%\.jira-agent\config.json`):
                               First rule where ANY of its labels is on the ticket (OR) and
                               whose issueTypes is empty-or-matching wins.
 
-Idempotency is state-based (`%USERPROFILE%\.jira-agent\state.json`), so runs missed while the
+Idempotency is state-based (`~/.jira-agent/state.json` or `%USERPROFILE%\.jira-agent\state.json` on Windows), so runs missed while the
 laptop slept do not lose tickets; clear a ticket's entry there to force a retry.
 </reference>
