@@ -2,7 +2,7 @@
   "name": "jira-agent",
   "displayName": "Automation Jira Agent",
   "description": "Manage a local Jira-driven coding agent: workflows, running/blocked tickets, labels, live log.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "arsenal120496",
   "license": "MIT",
   "icon": "media/icon.png",
