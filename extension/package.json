@@ -1,6 +1,6 @@
 {
   "name": "jira-agent",
-  "displayName": "Jira Agent",
+  "displayName": "Automation Jira Agent",
   "description": "Manage a local Jira-driven coding agent: workflows, running/blocked tickets, labels, live log.",
   "version": "1.0.0",
   "publisher": "arsenal120496",
