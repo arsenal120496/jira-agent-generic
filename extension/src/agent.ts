@@ -318,6 +318,51 @@ export function ensurePollerTask(): { ok: boolean; message: string } {
     }
 }
 
+export function disablePollerTask(): { ok: boolean; message: string } {
+    if (os.platform() === 'win32') {
+        try {
+            execFileSync('schtasks', ['/Change', '/TN', POLLER_TASK_NAME, '/DISABLE'],
+                { windowsHide: true, timeout: 8000 });
+            _taskCache = undefined;
+            return { ok: true, message: 'headless poller task disabled' };
+        } catch (e: any) {
+            try {
+                execFileSync('schtasks', ['/Delete', '/TN', POLLER_TASK_NAME, '/F'],
+                    { windowsHide: true, timeout: 8000 });
+                _taskCache = undefined;
+                return { ok: true, message: 'headless poller task deleted' };
+            } catch (e2: any) {
+                return { ok: false, message: `failed to disable/delete task: ${String(e2?.message || e2)}` };
+            }
+        }
+    } else {
+        try {
+            let currentCron = '';
+            try {
+                currentCron = execFileSync('crontab', ['-l'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+            } catch {
+                return { ok: true, message: 'crontab already empty' };
+            }
+            const script = pollerRunScript();
+            const lines = currentCron.split('\n').filter(l => l.trim() && (!script || !l.includes(script)));
+            if (lines.length === 0) {
+                try {
+                    execFileSync('crontab', ['-r'], { timeout: 5000 });
+                } catch {
+                    execFileSync('crontab', [], { input: '# empty crontab\n', encoding: 'utf8', timeout: 5000 });
+                }
+            } else {
+                const newCron = lines.join('\n') + '\n';
+                execFileSync('crontab', [], { input: newCron, encoding: 'utf8', timeout: 5000 });
+            }
+            _taskCache = undefined;
+            return { ok: true, message: 'headless poller removed from crontab' };
+        } catch (e: any) {
+            return { ok: false, message: `failed to remove from crontab: ${String(e?.message || e)}` };
+        }
+    }
+}
+
 export function readLegacyState(): Record<string, any> {
     try {
         const o = readJsonFile(statePath());

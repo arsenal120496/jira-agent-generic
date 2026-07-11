@@ -74,7 +74,8 @@ export function activate(context: vscode.ExtensionContext): void {
             refreshAll();
         }),
         // Stop = disable this workflow (enabled = false) so the background poller skips it. Also tears
-        // down any manual run this window started. The scheduled task keeps ticking for OTHER workflows.
+        // down any manual run this window started. If no other workflows are enabled, we temporarily
+        // disable the scheduled task / cronjob.
         vscode.commands.registerCommand('jiraAgent.stopWorkflow', async (item: WfItem) => {
             if (!item?.wfId) { return; }
             const rt = agent.workflowRuntime(item.wfId);
@@ -91,6 +92,18 @@ export function activate(context: vscode.ExtensionContext): void {
                 runningProcs.delete(item.wfId);
             }
             agent.clearWorkflowRunning(item.wfId);
+
+            // If all workflows are now disabled, stop the scheduled task/cronjob temporarily.
+            const activeWfs = agent.listWorkflows().filter(w => w.enabled !== false);
+            if (activeWfs.length === 0) {
+                const res = agent.disablePollerTask();
+                if (res.ok) {
+                    vscode.window.showInformationMessage(`Jira Agent: stopped background poller since all workflows are disabled. (${res.message})`);
+                } else {
+                    vscode.window.showWarningMessage(`Jira Agent: could not stop background task scheduler - ${res.message}`);
+                }
+            }
+
             refreshAll();
         }),
         vscode.commands.registerCommand('jiraAgent.setWorkflowInterval', async (item: WfItem) => {
@@ -110,6 +123,13 @@ export function activate(context: vscode.ExtensionContext): void {
             const ok = await vscode.window.showWarningMessage(`Delete workflow "${item.label}"? This removes its file and state.`, { modal: true }, 'Delete');
             if (ok !== 'Delete') { return; }
             agent.deleteWorkflowFiles(item.wfId, item.file);
+
+            // If all remaining workflows are disabled or no workflows left, stop the task.
+            const activeWfs = agent.listWorkflows().filter(w => w.enabled !== false);
+            if (activeWfs.length === 0) {
+                agent.disablePollerTask();
+            }
+
             refreshAll();
         }),
 
