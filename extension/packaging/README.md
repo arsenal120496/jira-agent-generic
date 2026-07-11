@@ -56,6 +56,36 @@ To get started quickly, you can set up a sample workflow in the extension side p
    - Keep the other advanced settings as default (e.g., Handler: `implement-task`).
 4. Click **Save**.
 
+### Reference: Workflow Setting Properties
+
+Here is the complete reference of all the fields available in the workflow editor form:
+
+#### Core Settings
+- **Name**: Display name for this workflow (e.g., `My Dev Workflow`).
+- **Repo**: Local working copy path this workflow operates on. You can browse for a folder or enter a GitHub clone URL and click **Clone**.
+- **Query labels**: Semicolon-separated labels the poller searches for (e.g., `claude-fix`). The poller scans for tickets assigned to you containing any/all of these labels.
+- **Match mode**: How query labels are combined:
+  - `Any of these labels (OR)`: Matches tickets with any of the query labels.
+  - `All of these labels (AND)`: Matches tickets with all of the query labels.
+  - `None of these labels (NEITHER)`: Excludes tickets carrying any of the query labels.
+  - `Custom JQL`: Allows you to write a custom JQL query.
+- **Custom JQL**: A custom Jira JQL query (used when Match mode is set to "Custom").
+- **Auto run after add**: Toggle (`ON`/`OFF`) that automatically starts the background poller upon workflow creation.
+- **Poll interval (min)**: How often the scheduled task ticks and checks this workflow, in minutes (e.g., `10` minutes).
+
+#### Advanced Settings (click "Advanced" to expand)
+- **Handler**: The headless skill that implements the ticket (default: `implement-task`).
+- **Max tickets / run**: Safety cap for the maximum number of tickets to dispatch per scan (default: `2`).
+- **Project key**: Jira project key (e.g., `XYZ`). Used to query Jira labels and load project-specific issue types.
+- **Issue types**: Semicolon-separated issue types to filter (e.g., `Bug;Task;Story`). Leave empty to retrieve and match all project issue types.
+- **Instructions**: Custom guidance instructions appended to the agent's prompt (e.g. `Follow coding rules defined in rules.md`).
+- **Jira base URL**: Your organization's Jira site URL (e.g., `https://your-org.atlassian.net`).
+- **Lock label**: Label added to a ticket while the agent is working on it (default: `claude-in-progress`).
+- **Done label**: Label added to a ticket when the agent successfully opens a PR (default: `claude-done`).
+- **Block label**: Label added when the run is blocked (e.g., missing AC, needs info; default: `claude-blocked`).
+- **Fail label**: Label added when the run fails (e.g. build/test gate failures or crash; default: `claude-failed`).
+
+
 ### How to trigger the agent:
 1. Go to Jira, assign a ticket from the `XYZ` project to yourself.
 2. Add the label `claude-fix` to that ticket.
