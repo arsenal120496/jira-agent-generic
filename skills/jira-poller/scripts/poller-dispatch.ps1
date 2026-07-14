@@ -69,6 +69,12 @@ Write-Host ("[LOCKED ] {0}: '{1}' added; running handler (log: {2})" -f $Key, $l
 # --- 2. run handler headless in the target repo ---
 $code = 1
 $oldEap = $ErrorActionPreference
+$oldBaseBranch = $env:BASE_BRANCH
+$oldCreatePR = $env:CREATE_PR
+
+if ($wf.baseBranch) { $env:BASE_BRANCH = $wf.baseBranch } else { $env:BASE_BRANCH = '' }
+if ($wf.createPR -eq $false) { $env:CREATE_PR = 'false' } else { $env:CREATE_PR = 'true' }
+
 Push-Location $Repo
 try {
     # Continue (not Stop): claude writes warnings/progress to stderr; under Stop that would throw
@@ -82,6 +88,8 @@ try {
     $code = 1
 } finally {
     $ErrorActionPreference = $oldEap
+    $env:BASE_BRANCH = $oldBaseBranch
+    $env:CREATE_PR = $oldCreatePR
     Pop-Location
 }
 
@@ -127,11 +135,11 @@ if ($resultMarker -eq 'blocked-silent') {
 } elseif ($resultMarker -eq 'failed') {
     $result = 'failed'
 } elseif ($resultMarker -eq 'done') {
-    if (Test-PrExists -RepoPath $Repo -IssueKey $Key -Log $logText) { $result = 'done' }
+    if ($wf.createPR -eq $false -or (Test-PrExists -RepoPath $Repo -IssueKey $Key -Log $logText)) { $result = 'done' }
     else { $result = 'failed'; ("verify: handler reported done but no PR found for {0} - downgraded to failed" -f $Key) | Add-Content -LiteralPath $logFile }
 } else {
-    # no marker - fall back to exit code, but still require a real PR for done
-    if ($code -eq 0 -and (Test-PrExists -RepoPath $Repo -IssueKey $Key -Log $logText)) { $result = 'done' }
+    # no marker - fall back to exit code, but still require a real PR for done unless disabled
+    if ($code -eq 0 -and ($wf.createPR -eq $false -or (Test-PrExists -RepoPath $Repo -IssueKey $Key -Log $logText))) { $result = 'done' }
     elseif ($code -eq 2) { $result = 'blocked' }
     else { $result = 'failed' }
 }
@@ -139,9 +147,19 @@ if ($resultMarker -eq 'blocked-silent') {
 # --- 4. report outcome ---
 if ($result -eq 'done') {
     Update-JiraLabels $Key @($done) @($lock)
-    try { Add-JiraComment $Key ("{0}: handler '{1}' completed. Check the linked PR. Log: {2}" -f $marker, $Handler, $logFile) } catch {}
+    try {
+        if ($wf.createPR -eq $false) {
+            Add-JiraComment $Key ("{0}: handler '{1}' completed (PR creation disabled). Log: {2}" -f $marker, $Handler, $logFile)
+        } else {
+            Add-JiraComment $Key ("{0}: handler '{1}' completed. Check the linked PR. Log: {2}" -f $marker, $Handler, $logFile)
+        }
+    } catch {}
     Set-WfTicketState $wid $Key 'done' ("handler={0}; log={1}" -f $Handler, $logFile)
-    Write-Host ("[DONE   ] {0}: handler completed (PR verified)" -f $Key) -ForegroundColor Green
+    if ($wf.createPR -eq $false) {
+        Write-Host ("[DONE   ] {0}: handler completed (PR creation disabled)" -f $Key) -ForegroundColor Green
+    } else {
+        Write-Host ("[DONE   ] {0}: handler completed (PR verified)" -f $Key) -ForegroundColor Green
+    }
     exit 0
 } elseif ($result -eq 'blocked-silent') {
     # Re-visit: still blocked and nothing new to say. Keep the block label, do NOT comment again.

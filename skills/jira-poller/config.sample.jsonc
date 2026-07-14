@@ -47,6 +47,12 @@
   // Leave empty unless you need e.g. a specific model/flag. Example: ["--model","sonnet"]
   "claudeArgs": [],
 
+  // Default integration branch to branch off and merge into. Empty = auto-detect.
+  "baseBranch": "",
+
+  // Whether to automatically create a GitHub PR. Defaults to true.
+  "createPR": true,
+
   // Routing rules. Each ticket is tested against these top-to-bottom; the FIRST
   // rule whose "labels" are ALL present AND whose "issueTypes" is empty-or-matching
   // wins, and the ticket is dispatched to that rule's handler in that rule's repo.

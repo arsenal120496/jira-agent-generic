@@ -21,7 +21,9 @@ const HINTS: Record<string, string> = {
     lockLabel: 'Label the poller adds to a ticket while it is being worked on.',
     doneLabel: 'Label the poller adds when a ticket is completed.',
     blockLabel: 'Label added to a ticket when the agent blocks it (missing AC, blocked-by another ticket, needs a human).',
-    failLabel: 'Label added to a ticket when the run fails (build/test gate failed or handler errored).'
+    failLabel: 'Label added to a ticket when the run fails (build/test gate failed or handler errored).',
+    baseBranch: 'The default integration branch to branch off and merge into (e.g. main or master). If left empty, the repo\'s default integration branch is automatically detected.',
+    createPR: 'Whether to automatically create a GitHub pull request after successfully implementing the task.'
 };
 
 function esc(s: any): string {
@@ -136,6 +138,8 @@ export class WorkflowEditor {
             delete w.dryRun;
             w.pollIntervalMinutes = Math.min(1439, Math.max(1, parseInt(d.pollIntervalMinutes, 10) || 10));
             w.repo = String(d.repo || '').trim();
+            w.baseBranch = String(d.baseBranch || '').trim();
+            w.createPR = !!d.createPR;
             // Build JQL from the match mode + query labels (or a custom JQL).
             const mode = String(d.labelMatch || 'any');
             w.labelMatch = mode;
@@ -321,6 +325,10 @@ export class WorkflowEditor {
       <div class="inline">${text('issueTypes', shown(issueTypes), 'empty = all project types')}<button class="secondary" id="pickTypes">Pick</button></div>
     </div>
   </div>
+  <div class="grid2">
+    <div class="row"><label class="field">Base branch ${hint('baseBranch')}</label>${text('baseBranch', shown(w.baseBranch), 'empty = auto-detect')}</div>
+    <div class="row"><label class="field">Create PR ${hint('createPR')}</label>${check('createPR', w.createPR !== false)}</div>
+  </div>
   <div class="row"><label class="field">Instructions ${hint('instructions')}</label><textarea id="instructions">${esc(rule.instructions || '')}</textarea></div>
   <div class="row"><label class="field">Jira base URL ${hint('jiraBaseUrl')}</label>${text('jiraBaseUrl', shown(w.jiraBaseUrl), 'https://your-org.atlassian.net')}</div>
   <div class="grid2">
@@ -350,6 +358,7 @@ export class WorkflowEditor {
     repo: val('repo'), agentLabels: val('agentLabels'), issueTypes: val('issueTypes'),
     handler: val('handler'), instructions: val('instructions'),
     jiraBaseUrl: val('jiraBaseUrl'), projectKey: val('projectKey'),
+    baseBranch: val('baseBranch'), createPR: chk('createPR'),
     lockLabel: val('lockLabel'), doneLabel: val('doneLabel'),
     blockLabel: val('blockLabel'), failLabel: val('failLabel')
   }}));
