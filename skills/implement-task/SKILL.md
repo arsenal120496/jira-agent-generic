@@ -156,7 +156,7 @@ summarized in the PR body, where the developer reviews it.
 </step>
 
 <step name="implement">
-Create a feature branch from an up-to-date base (fetch, branch off the detected default branch).
+Create a feature branch from an up-to-date base. If the environment variable `BASE_BRANCH` is provided and not empty, use that branch as the base to branch off. Otherwise, fetch and branch off the repo's detected default branch.
 Make the code changes following the loaded rules. Every changed line must trace to an acceptance
 criterion or the ticket scope.
 </step>
@@ -222,7 +222,7 @@ After the AC commits, push the branch. Do not skip hooks.
 </step>
 
 <step name="create_pr">
-Open a PR targeting the detected base branch with the GitHub CLI:
+If the environment variable `CREATE_PR` is set to 'false', skip this step entirely. Otherwise, open a PR targeting the base branch (using `BASE_BRANCH` if provided, otherwise the detected default integration branch) with the GitHub CLI:
 ```
 gh pr create --base <base> --head <branch> --title "<ticket_key>: <summary>" --body "<pr body>"
 ```
@@ -237,9 +237,9 @@ state; do not duplicate that here.
 
 **Machine-readable result (MANDATORY, must be the LAST two lines of your output).** The poller cannot
 trust the process exit code (headless `claude -p` always exits 0), so it reads these markers instead.
-Only emit `done` when a PR was actually opened - print its URL:
+If a PR was opened, print its URL using the `AGENT_PR` marker. If `CREATE_PR` is 'false', do not open a PR, but still emit `AGENT_RESULT: done` as the last line.
 ```
-AGENT_PR: <the PR url>
+AGENT_PR: <the PR url> (omit if CREATE_PR is false)
 AGENT_RESULT: done
 ```
 </step>
