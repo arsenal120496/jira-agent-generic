@@ -5,6 +5,7 @@ import { WorkflowsProvider, WfItem } from './workflowsProvider';
 import { TicketsProvider, TicketItem } from './ticketsProvider';
 import { LogProvider } from './logProvider';
 import { WorkflowEditor } from './editorPanel';
+import { LogDashboard } from './logDashboard';
 
 export function activate(context: vscode.ExtensionContext): void {
     // Marketplace installs ship the skills inside the VSIX; copy them to ~/.claude/skills on first
@@ -135,15 +136,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
         // ---- tickets ----
         vscode.commands.registerCommand('jiraAgent.rerunTicket', (item: TicketItem) => { agent.clearTicketState(item?.key, item?.workflow); tickets.refresh(); }),
-        vscode.commands.registerCommand('jiraAgent.openTicketLog', (item: TicketItem) => agent.openLatestLog(item?.key)),
+        vscode.commands.registerCommand('jiraAgent.openTicketLog', (item: TicketItem) => {
+            const p = agent.getLatestLogPath(item?.key);
+            if (p) {
+                LogDashboard.open(context.extensionUri, p);
+            } else {
+                vscode.window.showInformationMessage(`Jira Agent: no log found for ${item?.key}.`);
+            }
+        }),
         vscode.commands.registerCommand('jiraAgent.openTicketInJira', (item: TicketItem) => agent.openInJira(item?.key, item?.jiraBaseUrl)),
 
         // ---- log ----
         vscode.commands.registerCommand('jiraAgent.openLogFile', async (file?: string) => {
             const f = file || agent.newestRunLog();
             if (!f) { vscode.window.showInformationMessage('Jira Agent: no log yet.'); return; }
-            const doc = await vscode.workspace.openTextDocument(f);
-            await vscode.window.showTextDocument(doc);
+            LogDashboard.open(context.extensionUri, f);
         }),
         vscode.commands.registerCommand('jiraAgent.openLogsFolder', () => vscode.env.openExternal(vscode.Uri.file(agent.logsDir())))
     );
