@@ -3,6 +3,8 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Layout](#layout)
+- [Prerequisites](#prerequisites)
+- [Configuring a Sample Workflow](#configuring-a-sample-workflow)
 - [Build a distributable bundle](#build-a-distributable-bundle)
 - [What differs from the internal version](#what-differs-from-the-internal-version)
 - [Open items before public release](#open-items-before-public-release)
@@ -19,6 +21,42 @@ endpoints, project keys, plugin dependencies, or domain content.
 - `extension/packaging/` - `install.ps1` / `install.cmd`, `README.md` (end-user), `build-bundle.ps1`.
 - `skills/jira-poller/` - the poller skill + PowerShell scripts (Jira Cloud REST, per-workflow state).
 - `skills/implement-task/` - the handler skill + rule profiles.
+
+## Prerequisites
+Set up these requirements in your environment before using the agent:
+- **Jira Credentials**: Define the following environment variables in your system:
+  - `JIRA_USER`: Your Jira account email.
+  - `JIRA_API_TOKEN`: Your Jira API token (generate one at https://id.atlassian.com/manage-profile/security/api-tokens).
+- **Claude Code CLI**: The `claude` executable must be available on your PATH.
+- **Git and GitHub CLI**: `git` and `gh` must be installed. Run `gh auth login` so that repository operations and PR creations succeed.
+- **PowerShell Core**: On Linux and macOS, PowerShell Core (`pwsh`) must be installed on your PATH for running the background poller tasks.
+
+### Setting up Environment Variables
+
+#### On Linux / macOS
+To set these environment variables permanently for command-line and GUI applications, add them to your shell configuration file (e.g., `~/.bashrc` or `~/.zshrc`):
+1. Open your configuration file:
+   ```bash
+   nano ~/.bashrc
+   ```
+2. Add the following lines at the end of the file:
+   ```bash
+   export JIRA_USER="your-email@example.com"
+   export JIRA_API_TOKEN="your-jira-api-token"
+   ```
+3. Load the updated configuration:
+   ```bash
+   source ~/.bashrc
+   ```
+4. Restart your IDE from the terminal (e.g., `code` or `antigravity-ide`) so it inherits the environment variables.
+
+#### On Windows
+To set these environment variables permanently on Windows:
+1. Open the Start menu, search for "env", and select **Edit environment variables for your account**.
+2. Under **User variables**, click **New...** to add the following variables:
+   - Variable name: `JIRA_USER` / Variable value: `your-email@example.com`
+   - Variable name: `JIRA_API_TOKEN` / Variable value: `your-jira-api-token`
+3. Click **OK** to save, and restart your IDE for the changes to take effect.
 
 ## Configuring a Sample Workflow
 To get started quickly, you can set up a sample workflow in the extension side panel:
