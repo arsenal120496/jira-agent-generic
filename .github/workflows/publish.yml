@@ -1,0 +1,30 @@
+name: Publish Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd extension
+          npm ci
+
+      - name: Publish to Open VSX
+        run: |
+          cd extension
+          npx ovsx publish -p ${{ secrets.OVSX_PAT }}

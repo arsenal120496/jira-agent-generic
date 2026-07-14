@@ -2,6 +2,11 @@
 
 All notable changes to the **Automation Jira Agent** extension will be documented in this file.
 
+## [1.0.3] - 2026-07-14
+### Added
+- Added support for specifying a custom base branch (`baseBranch`) in workflow configurations.
+- Added a configuration toggle (`createPR`) to enable or disable automatic GitHub pull request creation.
+
 ## [1.0.2] - 2026-07-11
 ### Added
 - Added official extension `CHANGELOG.md` to the package manifest for marketplace visibility.
