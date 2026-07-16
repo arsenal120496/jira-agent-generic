@@ -5,6 +5,7 @@ import { WorkflowsProvider, WfItem } from './workflowsProvider';
 import { TicketsProvider, TicketItem } from './ticketsProvider';
 import { LogProvider } from './logProvider';
 import { WorkflowEditor } from './editorPanel';
+import { LogDashboard } from './logDashboard';
 
 export function activate(context: vscode.ExtensionContext): void {
     // Marketplace installs ship the skills inside the VSIX; copy them to ~/.claude/skills on first
@@ -29,7 +30,77 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.registerTreeDataProvider('jiraAgentLog', logs)
     );
 
-    const refreshAll = () => { workflows.refresh(); tickets.refresh(); logs.refresh(); };
+    // Create Status Bar Item
+    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    statusBarItem.text = '$(sync) Jira Agent: Idle';
+    statusBarItem.tooltip = 'Click to refresh Jira Agent';
+    statusBarItem.command = 'jiraAgent.refresh';
+    statusBarItem.show();
+    context.subscriptions.push(statusBarItem);
+
+    // Cache to monitor ticket state transitions
+    const ticketStatusCache = new Map<string, string>();
+    let initialLoad = true;
+
+    const checkStateChanges = () => {
+        try {
+            const currentWorkflows = agent.listWorkflows();
+            for (const wf of currentWorkflows) {
+                const wfId = wf._id;
+                const state = agent.readWorkflowState(wfId);
+                for (const ticketKey of Object.keys(state)) {
+                    if (ticketKey.startsWith('_')) { continue; }
+                    const entry = state[ticketKey] || {};
+                    const status = String(entry.status || '');
+                    const cacheKey = `${wfId}:${ticketKey}`;
+                    const lastStatus = ticketStatusCache.get(cacheKey);
+                    
+                    if (!initialLoad && lastStatus !== undefined && lastStatus !== status) {
+                        if (status === 'done') {
+                            vscode.window.showInformationMessage(`Jira Agent: Ticket ${ticketKey} completed successfully!`);
+                        } else if (status === 'blocked') {
+                            vscode.window.showWarningMessage(`Jira Agent: Ticket ${ticketKey} is BLOCKED: ${entry.note || 'no reason given'}`);
+                        } else if (status === 'failed') {
+                            vscode.window.showErrorMessage(`Jira Agent: Ticket ${ticketKey} run FAILED: ${entry.note || 'error during implementation'}`);
+                        }
+                    }
+                    ticketStatusCache.set(cacheKey, status);
+                }
+            }
+            initialLoad = false;
+        } catch (e) {
+            // Ignore
+        }
+    };
+
+    const updateStatusBar = () => {
+        const isRunning = runningProcs.size > 0;
+        if (isRunning) {
+            statusBarItem.text = '$(sync~spin) Jira Agent: Scanning...';
+            statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+        } else {
+            const taskState = agent.pollerTaskState();
+            if (taskState.registered && taskState.enabled) {
+                statusBarItem.text = '$(sync) Jira Agent: Polling';
+                statusBarItem.backgroundColor = undefined;
+            } else {
+                statusBarItem.text = '$(sync) Jira Agent: Idle';
+                statusBarItem.backgroundColor = undefined;
+            }
+        }
+    };
+
+    const refreshAll = () => {
+        workflows.refresh();
+        tickets.refresh();
+        logs.refresh();
+        checkStateChanges();
+        updateStatusBar();
+    };
+
+    // Initial check of state and status bar
+    checkStateChanges();
+    updateStatusBar();
 
     const saveWorkflow = (item: WfItem | undefined, mutate: (w: any) => void) => {
         if (!item?.file) { return; }
@@ -69,6 +140,7 @@ export function activate(context: vscode.ExtensionContext): void {
             if (proc) {
                 runningProcs.set(item.wfId, proc);
                 proc.on('close', () => { runningProcs.delete(item.wfId); refreshAll(); });
+                updateStatusBar();
             }
             vscode.window.showInformationMessage(`Jira Agent: "${item.label}" is now running headless and will poll on its interval. (${reg.message})`);
             refreshAll();
@@ -135,15 +207,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
         // ---- tickets ----
         vscode.commands.registerCommand('jiraAgent.rerunTicket', (item: TicketItem) => { agent.clearTicketState(item?.key, item?.workflow); tickets.refresh(); }),
-        vscode.commands.registerCommand('jiraAgent.openTicketLog', (item: TicketItem) => agent.openLatestLog(item?.key)),
+        vscode.commands.registerCommand('jiraAgent.openTicketLog', (item: TicketItem) => {
+            const p = agent.getLatestLogPath(item?.key);
+            if (p) {
+                LogDashboard.open(context.extensionUri, p);
+            } else {
+                vscode.window.showInformationMessage(`Jira Agent: no log found for ${item?.key}.`);
+            }
+        }),
         vscode.commands.registerCommand('jiraAgent.openTicketInJira', (item: TicketItem) => agent.openInJira(item?.key, item?.jiraBaseUrl)),
 
         // ---- log ----
         vscode.commands.registerCommand('jiraAgent.openLogFile', async (file?: string) => {
             const f = file || agent.newestRunLog();
             if (!f) { vscode.window.showInformationMessage('Jira Agent: no log yet.'); return; }
-            const doc = await vscode.workspace.openTextDocument(f);
-            await vscode.window.showTextDocument(doc);
+            LogDashboard.open(context.extensionUri, f);
         }),
         vscode.commands.registerCommand('jiraAgent.openLogsFolder', () => vscode.env.openExternal(vscode.Uri.file(agent.logsDir())))
     );

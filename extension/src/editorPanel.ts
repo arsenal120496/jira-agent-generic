@@ -306,7 +306,39 @@ export class WorkflowEditor {
   </select>
   <div class="muted" id="matchHint"></div>
 </div>
-<div class="row" id="customJqlRow"><label class="field">Custom JQL ${hint('jql')}</label>${text('jql', w.jql, 'assignee = currentUser() AND labels in (a, b)')}</div>
+<div class="row" id="customJqlRow">
+  <label class="field">Custom JQL ${hint('jql')}</label>
+  ${text('jql', w.jql, 'assignee = currentUser() AND labels in (a, b)')}
+  
+  <div style="margin-top: 8px; padding: 10px; background: var(--vscode-welcomePage-tileBackground, rgba(128,128,128,0.15)); border-radius: 4px; border: 1px solid var(--vscode-input-border, rgba(128,128,128,0.2));">
+    <div style="font-weight: 600; font-size: 11px; text-transform: uppercase; margin-bottom: 8px; color: var(--vscode-descriptionForeground);">JQL Builder Helper</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+      <div>
+        <label style="display: block; font-size: 10px; font-weight: 600; margin-bottom: 3px;">Project Key</label>
+        <input type="text" id="jqlProj" placeholder="e.g. ABC" style="font-size: 11px; padding: 4px 6px;" />
+      </div>
+      <div>
+        <label style="display: block; font-size: 10px; font-weight: 600; margin-bottom: 3px;">Issue Type</label>
+        <input type="text" id="jqlType" placeholder="e.g. Bug" style="font-size: 11px; padding: 4px 6px;" />
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+      <div>
+        <label style="display: block; font-size: 10px; font-weight: 600; margin-bottom: 3px;">Assignee</label>
+        <select id="jqlAssignee" style="font-size: 11px; padding: 4px 6px; background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); border: 1px solid var(--vscode-dropdown-border, transparent); border-radius: 3px; width: 100%;">
+          <option value="currentUser()">Current User</option>
+          <option value="unassigned">Unassigned</option>
+          <option value="any">Any</option>
+        </select>
+      </div>
+      <div>
+        <label style="display: block; font-size: 10px; font-weight: 600; margin-bottom: 3px;">Status</label>
+        <input type="text" id="jqlStatus" placeholder="e.g. To Do" style="font-size: 11px; padding: 4px 6px;" />
+      </div>
+    </div>
+    <button type="button" class="secondary" id="jqlBuildBtn" style="font-size: 11px; padding: 4px 8px; width: 100%;">Generate & Insert JQL</button>
+  </div>
+</div>
 
 <div class="grid2">
   <div class="row"><label class="field">Auto run after add ${hint('autoRun')}</label>${check('autoRun', w.autoRun !== false)}</div>
@@ -362,6 +394,47 @@ export class WorkflowEditor {
     lockLabel: val('lockLabel'), doneLabel: val('doneLabel'),
     blockLabel: val('blockLabel'), failLabel: val('failLabel')
   }}));
+  
+  document.getElementById('jqlBuildBtn').addEventListener('click', () => {
+    const proj = val('jqlProj').trim();
+    const type = val('jqlType').trim();
+    const assignee = val('jqlAssignee');
+    const status = val('jqlStatus').trim();
+    
+    let parts = [];
+    if (assignee === 'currentUser()') {
+      parts.push('assignee = currentUser()');
+    } else if (assignee === 'unassigned') {
+      parts.push('assignee is EMPTY');
+    }
+    
+    if (proj) {
+      parts.push('project = "' + proj + '"');
+    }
+    if (type) {
+      if (type.includes(';')) {
+        const types = type.split(';').map(t => '"' + t.trim() + '"').filter(Boolean).join(', ');
+        parts.push('issuetype in (' + types + ')');
+      } else {
+        parts.push('issuetype = "' + type + '"');
+      }
+    }
+    if (status) {
+      if (status.includes(';')) {
+        const statuses = status.split(';').map(s => '"' + s.trim() + '"').filter(Boolean).join(', ');
+        parts.push('status in (' + statuses + ')');
+      } else {
+        parts.push('status = "' + status + '"');
+      }
+    }
+    
+    const generatedJql = parts.join(' AND ');
+    if (generatedJql) {
+      document.getElementById('jql').value = generatedJql;
+      buildPreview();
+    }
+  });
+
   function buildPreview() {
     const mode = val('labelMatch');
     const labels = val('agentLabels').split(';').map(s => s.trim()).filter(Boolean);

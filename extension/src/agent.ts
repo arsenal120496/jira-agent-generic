@@ -470,17 +470,25 @@ export function tailLines(file: string, n: number): string[] {
     try { return fs.readFileSync(file, 'utf8').split(/\r?\n/).filter(l => l.length).slice(-n); } catch { return []; }
 }
 
-export function openLatestLog(key?: string): void {
-    if (!key) { return; }
+export function getLatestLogPath(key?: string): string | undefined {
+    if (!key) { return undefined; }
     try {
         const dir = logsDir();
         const files = fs.readdirSync(dir).filter(f => f.endsWith(`-${key}.log`)).sort();
-        if (!files.length) { vscode.window.showInformationMessage(`Jira Agent: no log found for ${key}.`); return; }
-        const p = path.join(dir, files[files.length - 1]);
-        vscode.workspace.openTextDocument(p).then(d => vscode.window.showTextDocument(d));
+        if (!files.length) { return undefined; }
+        return path.join(dir, files[files.length - 1]);
     } catch {
-        vscode.window.showWarningMessage('Jira Agent: logs directory not found.');
+        return undefined;
     }
+}
+
+export function openLatestLog(key?: string): void {
+    const p = getLatestLogPath(key);
+    if (!p) {
+        vscode.window.showInformationMessage(`Jira Agent: no log found for ${key}.`);
+        return;
+    }
+    vscode.workspace.openTextDocument(p).then(d => vscode.window.showTextDocument(d));
 }
 export function openInJira(key?: string, jiraBaseUrl?: string): void {
     if (!key) { return; }
